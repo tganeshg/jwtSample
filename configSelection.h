@@ -1,7 +1,7 @@
 #ifndef CONFIGSELECTION_H
 #define CONFIGSELECTION_H
 
-#define	ATNT		1
+#define	ATNT		0
 #define	AWS			0
 #define	AZURE		0
 #define	GOOGLE		0
@@ -56,6 +56,12 @@
 	#define BROKER_PORT						1883
 	#define BROKER_UNAME					"ganesh"
 	#define BROKER_PASSWD					"ganesh"
+#else
+	#define BROKER_CLIENT_ID				"mytestsamplenode" /* Should be Unique */
+	#define BROKER_HOST						"152.67.166.88" /* IP or DOMAIN */
+	#define BROKER_PORT						1883
+	#define BROKER_UNAME					""
+	#define BROKER_PASSWD					""
 #endif
 
 /* SSL/TLS */
@@ -88,6 +94,13 @@
 	#define BROKER_CLKEY_FILE_NAME			""
 	#define BROKER_CLKEY_PASSWD				""
 #elif SPARKPLUG
+	#define BROKER_SSL_ENABLE				FALSE
+	#define CA_ONLY							FALSE
+	#define BROKER_CACRT_FILE_NAME			""
+	#define BROKER_CLCRT_FILE_NAME			""
+	#define BROKER_CLKEY_FILE_NAME			""
+	#define BROKER_CLKEY_PASSWD				""
+#else
 	#define BROKER_SSL_ENABLE				FALSE
 	#define CA_ONLY							FALSE
 	#define BROKER_CACRT_FILE_NAME			""

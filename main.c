@@ -385,7 +385,7 @@ VOID getValueAndConsJson(MQTT_CONFIG *mqttConf,UINT32 pubIndex)
 	temp = time(NULL);                                                            
 	timeptr = localtime(&temp);
 	
-	#if ATNT
+#if ATNT
 	mqttConf->pubMqttMsg[pubIndex].msg = stringAppend((CHAR *)mqttConf->pubMqttMsg[pubIndex].msg,(const CHAR *)"{",1);
 	
 	memset(tempBuff,0,sizeof(tempBuff));
@@ -422,7 +422,8 @@ VOID getValueAndConsJson(MQTT_CONFIG *mqttConf,UINT32 pubIndex)
 	sprintf(tempBuff,"\"value\":%d}]}}",value);
 	mqttConf->pubMqttMsg[pubIndex].msg = stringAppend((CHAR *)mqttConf->pubMqttMsg[pubIndex].msg,(const CHAR *)tempBuff,strlen(tempBuff));
 
-	#elif ( GOOGLE || AWS || AZURE)
+/* #elif ( GOOGLE || AWS || AZURE) */
+#else
 	memset(tempBuff,0,sizeof(tempBuff));
 	//strftime(tempBuff,sizeof(tempBuff)-1,"{\"timestamp\":\"%FT%I:%M:%S.000Z\",", timeptr); 
 	strftime(tempBuff,sizeof(tempBuff)-1,"{\"Time\":\"%FT%I:%M:%S.000Z\",", timeptr); 
@@ -432,7 +433,7 @@ VOID getValueAndConsJson(MQTT_CONFIG *mqttConf,UINT32 pubIndex)
 	//sprintf(tempBuff,"\"value\":%d}",value); 
 	sprintf(tempBuff,"\"Testvalue\":%d}",value); 
 	mqttConf->pubMqttMsg[pubIndex].msg = stringAppend((CHAR *)mqttConf->pubMqttMsg[pubIndex].msg,(const CHAR *)tempBuff,strlen(tempBuff));
-	#endif
+#endif
 	
 	mqttConf->pubMqttMsg[pubIndex].msgLen = strlen((const CHAR *)mqttConf->pubMqttMsg[pubIndex].msg);
 	mqttConf->pubMqttMsg[pubIndex].dataLoaded = TRUE;
