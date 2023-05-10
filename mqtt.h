@@ -13,10 +13,12 @@
 #ifndef MQTT_H
 #define MQTT_H
 
+#include "configSelection.h"
+#include "general.h"
 #include "mosquitto.h"
 #include "nxjson.h"
-#include "general.h"
-#include "configSelection.h"
+
+/* GOOGLE */
 #include "jwt.h"
 
 /* Constants */
@@ -24,7 +26,7 @@
 #define SSL_VERIFY_PEER 			1
 
 #define MQTT_MIN_DOWNLOAD_SIZE 		16
-#define MAX_STR_LEN 				255
+#define MAX_STR_LENGTH 				256
 
 #define MAX_PUBLISH 				4
 #define MAX_SUBSCRIBE 				4
@@ -36,10 +38,10 @@
 
 #define	DEBUG						TRUE
 
-#define SET_ST_EV(state,event)		nextMqttState = state; nextMqttEvent = event
-#define SET_STATE(state)			nextMqttState = state
-#define SET_EVENT(event)			nextMqttEvent = event
-#define	IS_STATE(state)				(nextMqttState == state)? TRUE : FALSE
+#define SET_ST_EV(state,event)		mqttConf[idxBc].nextMqttState = state; mqttConf[idxBc].nextMqttEvent = event
+#define SET_STATE(state)			mqttConf[idxBc].nextMqttState = state
+#define SET_EVENT(event)			mqttConf[idxBc].nextMqttEvent = event
+#define	IS_STATE(state)				(mqttConf[idxBc].nextMqttState == state)? TRUE : FALSE
 
 #define	JSON_ARRAY_KEY				"{\"ArrayOfReg\":["
 
@@ -67,18 +69,16 @@
 #define	BROKER_CONNECT_CALL_FAILED	260
 #define	NW_LOOP_START_FAILED		261
 
-#if GOOGLE
+/* GOOGLE */
 #define	KW_PROJID		"projects/"
 #define	KW_LOC			"/locations/"
 #define	KW_REGIS		"/registries/"
 #define	KW_DEV			"/devices/"
 #define	KW_EVENT		"/events"
-#endif
 
-#if ATNT
+/* ATNT */
 #define	KW_M2X			"m2x/"
 #define	KW_REQUESTS		"/requests"
-#endif
 
 typedef struct mosquitto* 			mqttInstance;
 typedef struct mosquitto_message 	mqttMsg;
@@ -94,15 +94,12 @@ typedef union
 	UINT32	uInt32Val;
 	FP32	floatVal;
 	CHAR	character;
-	CHAR	strBuf[MAX_STR_LEN];
-}REG_VALUE;
+	CHAR	strBuf[MAX_STR_LENGTH];
+}REG_VAL;
 
 /** Enums **/
 typedef enum
 {
-	STATE_LIB_INIT = 0,
-	STATE_LIB_DEINIT,
-	STATE_GET_CONFIG,
 	STATE_CONNECT,
 	STATE_PUBLISH,
 	STATE_SUBSCRIBE,
@@ -146,15 +143,15 @@ typedef enum
 	DATA_TYPE_UDINT,	//32bit
 	DATA_TYPE_REAL,		//32bit
 	DATA_TYPE_STRING
-}REG_DATA_TYPES;
+}E_REG_DATA_TYPES;
 
 /** MQTT Configure Structure **/
 typedef struct
 {
-	UINT32			regToken;
-	UINT16			regLength;
-	REG_DATA_TYPES	regDataType;
-	UINT8			unused1;
+	UINT32				regToken;
+	UINT16				regLength;
+	E_REG_DATA_TYPES	regDataType;
+	UINT8				unused1;
 }REG_INFO;
 
 typedef struct
@@ -193,7 +190,7 @@ typedef struct
 	UINT32			perIntervalTime;		//Timeout for periodic Interval
 	REG_INFO		regDataInfo;
 	MSG_STATUS		msgStatus;
-	UINT8			unused1;
+	UINT8			sending;
 }PUB_MQTT_MSG;
 
 typedef struct
@@ -253,93 +250,12 @@ typedef struct
 	UINT32			totalSubCount;		//This is the count of subscribe entry added by user out of MAX_SUBSCRIBE
 	UINT32			totalPubMsgCount;	//This is the count of published messages /*v0.02*/
 	UINT32			totalSubMsgCount;	//This is the count of Received messages /*v0.02*/
-	UINT8			unused1;
+	E_MQTT_STATES	nextMqttState;
+	E_MQTT_EVENTS	nextMqttEvent;
+	UINT8			unused[3];
 }MQTT_CONFIG;
 
-/** Configure structure from Cscape  **/
-typedef struct
-{
-	UINT32	dwPubrefStart;
-	UINT32	dwPubCount;
-	UINT32	dwPubTypeOffset;
-	UINT32	dwPubTypeLength;
-
-	UINT32	dwPubTopicNameOffset;
-	UINT32	dwPubTopicNameLength;
-	UINT32	dwPubQosBlockSize;
-	UINT32	dwPubRetained;
-	UINT32	dwPubPeriodicChk;
-	UINT32	dwPubPeriodicTime;
-	UINT32	dwPubTopicTrigger;
-}PUBLISH_TOPICS;
-
-typedef struct
-{
-	UINT32	dwSubTopicNameOffset;
-	UINT32	dwSubTopicNameLength;
-	UINT32	dwSubQosBlockSize;
-}SUBSCRIBE_TOPICS;
-
-typedef struct
-{
-	UINT32	dwMQTTDataSize; //This is not for FW
-	UINT32	dwStringTableOffset;
-	
-	/* Broker IP */
-	UINT32	dwMQTTServerIPOffset;
-	UINT32	dwMQTTServerIPLength;
-	/* User NAme */
-	UINT32	dwMQTTUserNameOffset;
-	UINT32	dwMQTTUserNameLength;
-	/* Password */
-	UINT32	dwMQTTPasswordOffset;
-	UINT32	dwMQTTPasswordLength;
-	/* Client ID */
-	UINT32	dwMQTTClientIdOffset;
-	UINT32	dwMQTTClientIdLength;
-
-	UINT32	dwMQTTPortNumber;
-	UINT32	dwMQTTKeepAlive;
-	UINT32	dwMQTTCleanSession;
-	UINT32	dwMQTTClientType;
-	
-	/* Broker/Connection Name */
-	UINT32	dwMQTTRemoteNodeNameOffset;
-	UINT32	dwMQTTRemoteNodeNameLength;
-	/* Status Register - Token Only */
-	UINT32	dwMQTTStatus;
-	/* Enable(Trigger) Register - Token Only */
-	UINT32	dwMQTTTrigger;
-	/* TLS */
-	UINT32	dwMQTTEnableSSL_TLS; //0 or 1
-	UINT32	dwMQTTProtType; // 1 - tlsv1, 2 - tlsv1.1, 3 - tlsv1.2
-	
-	UINT32	dwMQTTCACertFileChk;		//0 or 1 - cafileonly option
-	UINT32	dwMQTTSLFSGNCertFileChk;	//0 or 1 - cafile and client files option
-	/* CAfile DataString */
-	UINT32	dwMQTTCACertFileStrOffset;
-	UINT32	dwMQTTCACertFileStrLength;
-	/* CAfile and clientFile DataString */
-	UINT32	dwMQTTSelfSignCACertFileStrOffset;
-	UINT32	dwMQTTSelfSignCACertFileStrLength;
-	UINT32	dwMQTTSelfSignClntCACertFileStrOffset;
-	UINT32	dwMQTTSelfSignClntCACertFileStrLength;
-	UINT32	dwMQTTSelfSignClntKeyFileStrOffset;
-	UINT32	dwMQTTSelfSignClntKeyFileStrLength;
-	UINT32	dwMQTTSelfSignClntKeyPasswordOffset;
-	UINT32	dwMQTTSelfSignClntKeyPasswordLength;
-	
-	/* Data Publish */
-	UINT32	dwMQTTNoOfPublishTopics;
-	UINT32  dwMQTTNoOfSubcribeTopics;
-	UINT32	UnUsed1;
-	UINT32	UnUsed2;
-
-	PUBLISH_TOPICS	publishTopicsData[MAX_PUBLISH];
-	SUBSCRIBE_TOPICS subscribeTopicsData[MAX_SUBSCRIBE];
-} MQTT_COMPILED_FORMAT;
-
-#if GOOGLE
+/* For GOOGLE */
 /* JWT type of Authentication */
 typedef struct
 {
@@ -362,9 +278,8 @@ typedef struct
 	CHAR 		*region;
 	JWT_INFO	jwtInfos;
 }GOOGLE_IOT_CONFIG;
-#endif
 
-#if ATNT
+/* For ATNT */
 typedef struct
 {
 	CHAR 	*deviceName;
@@ -374,16 +289,6 @@ typedef struct
 	CHAR 	*streamID;
 	UINT32	msgIdCnt;
 }ATNT_IOT_CONFIG;
-#endif
-
-#if SPARKPLUG
-typedef struct
-{
-	BOOL enable; /* TRUE - enable , FALSE - Disable */
-	
-}SP_MAIN_CONFIG;
-
-#endif
 
 /** Function Prototype **/
 VOID mqttLibInit(VOID);

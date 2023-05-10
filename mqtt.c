@@ -236,7 +236,7 @@ BOOL mqttConnect(MQTT_CONFIG *mqttConf)
 				printf("Mqtt TLS set error..%s:%s\n",mqttConf->mqttConnName,mqttConf->clientId);
 				goto G_FLASE;
 			}
-			
+
 			mosqErrno = mosquitto_tls_opts_set(mqttConf->mqttInst,SSL_VERIFY_PEER,(const CHAR *)mqttConf->sslTlsConfig.tlsVersion,NULL);
 			if(mosqErrno != MOSQ_ERR_SUCCESS)
 			{
@@ -256,7 +256,16 @@ BOOL mqttConnect(MQTT_CONFIG *mqttConf)
 			goto G_FLASE;
 		}
 	}//*ADDED 1*/
-	
+
+	/* Set max in-flight message count  */
+	mosqErrno = mosquitto_max_inflight_messages_set(mqttConf->mqttInst, 24);
+	if(mosqErrno != MOSQ_ERR_SUCCESS)
+	{
+		#if DEBUG
+		printf("Mqtt set max in-flight messages error..%s:%s\n",mqttConf->mqttConnName,mqttConf->clientId);
+		#endif
+	}
+
 	/* Connect to Broker */
 	mosqErrno = mosquitto_connect_async(mqttConf->mqttInst, mqttConf->mqttBrokerIp, 
 										mqttConf->mqttBrokerPort, mqttConf->keepAlive);
@@ -352,6 +361,10 @@ BOOL mqttPublish(MQTT_CONFIG *mqttConf,UINT32 pubMsgIndex)
 									(const VOID *)mqttConf->pubMqttMsg[pubMsgIndex].msg,
 									mqttConf->pubMqttMsg[pubMsgIndex].qos,
 									(bool)mqttConf->pubMqttMsg[pubMsgIndex].retain );
+
+	free((VOID *)mqttConf->pubMqttMsg[pubMsgIndex].msg); // release json memory
+	mqttConf->pubMqttMsg[pubMsgIndex].msg = NULL;
+									
 	if( mosqErrno != MOSQ_ERR_SUCCESS )
 	{
 		printf("mosquitto_publish() : Failed..Retry at next state..%s:%s - %s\n",mqttConf->mqttConnName,
@@ -359,6 +372,11 @@ BOOL mqttPublish(MQTT_CONFIG *mqttConf,UINT32 pubMsgIndex)
 																				 mosquitto_strerror(mosqErrno));
 		//mqttConf->pubMqttMsg[pubMsgIndex].retryCnt++;
 		return FALSE;
+	}
+	else
+	{
+		if(mqttConf->pubMqttMsg[pubMsgIndex].qos)
+			mqttConf->pubMqttMsg[pubMsgIndex].sending = TRUE;
 	}
 	mqttConf->totalPubMsgCount++; /*v0.02*/
 	return TRUE;
@@ -551,7 +569,6 @@ VOID messageCallback(struct mosquitto *mosq, VOID *userdata, const struct mosqui
 					len = strlen(udata->subMqttMsg[i].mqttMessage.topic);
 					udata->subMqttMsg[i].mqttMessage.topic[len] = '\0';
 					udata->subMqttMsg[i].dataLoaded = TRUE;
-					nextMqttEvent = (nextMqttEvent != EVENT_REINIT) ? EVENT_PROC_MSG : EVENT_REINIT;
 					break;
 				}
 			}
@@ -586,7 +603,7 @@ VOID publishCallback(struct mosquitto *mosq, VOID *userdata, INT mid)
 	INT32 i=0;
 	MQTT_CONFIG *udata = (MQTT_CONFIG *)userdata;
 	
-	#if 1
+	#if DEBUG
 	printf("Publish success mid : %d\n",mid);
 	#endif
 	for(i=0;i < udata->totalPubCount;i++)
@@ -594,8 +611,7 @@ VOID publishCallback(struct mosquitto *mosq, VOID *userdata, INT mid)
 		if( mid == udata->pubMqttMsg[i].msgId )
 		{
 			udata->pubMqttMsg[i].dataLoaded = FALSE;
-			free((VOID *)udata->pubMqttMsg[i].msg); // release json memory
-			udata->pubMqttMsg[i].msg = NULL;
+			udata->pubMqttMsg[i].sending = FALSE;
 		}
 	}
 }	// end of publishCallback()
@@ -621,7 +637,7 @@ VOID logCallback(struct mosquitto *mosq, VOID *userdata, INT level, const CHAR *
 {
 	/* Pring all log messages regardless of level,and maintaining connection b/w publisher and broker */
 	#if DEBUG
-	//printf("LOG: %s\n", str);
+	printf("LOG: %s\n", str);
 	#endif
 }	// end of logCallback()
 
@@ -656,7 +672,7 @@ VOID disconnectCallback(struct mosquitto *mosq, VOID *userdata, INT reasonCode)
 			udata->subMqttMsg[i].msgStatus.subscribeDataStatus = FALSE;
 		}
 	}
-	udata->clientStatus.isBrokerConnected = FALSE;
+	//udata->clientStatus.isBrokerConnected = FALSE;
 }	// end of disconnectCallback()
 
 /*****************************************************************************
